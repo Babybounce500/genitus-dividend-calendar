@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GENITUS DIVIDENDEN-KALENDER</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#f4f7fb;--surface:#ffffff;--border:#d9e2ec;--accent:#0e7490;--gold:#b45309;--green:#15803d;--red:#b91c1c;--muted:#52606d;--text:#1e293b;--bright:#0f172a;--mono:'Space Mono',monospace;--sans:'Rajdhani',sans-serif;}
+    :root.dark-theme{--bg:#080c10;--surface:#0d1117;--border:#1e2d3d;--accent:#00d4ff;--gold:#f0c040;--green:#00ff88;--red:#ff3b5c;--muted:#7d92a8;--text:#c8d8e8;--bright:#ffffff;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;min-height:100vh;transition:background .25s,color .25s;}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:200;}
+    .logo{display:flex;align-items:center;gap:12px;}
+    .logo-mark{width:32px;height:32px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;color:var(--accent);}
+    .logo-text{font-family:var(--mono);font-size:13px;letter-spacing:3px;color:var(--bright);}
+    .logo-sub{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--muted);display:block;margin-top:1px;}
+    #themeToggleBtn{background:none;border:1px solid var(--border);color:var(--accent);width:30px;height:30px;border-radius:2px;cursor:pointer;font-size:14px;}
+    .cache-badge{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid var(--accent);color:var(--accent);border-radius:2px;text-transform:uppercase;}
+    .main{max-width:1200px;margin:0 auto;padding:20px;}
+    .tabbar{display:flex;gap:6px;margin-bottom:16px;}
+    .tabbtn{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:10px 16px;border-radius:6px;cursor:pointer;}
+    .tabbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+    .tabpanel{display:none;} .tabpanel.active{display:block;}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;}
+    select,input[type="text"]{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;border-radius:2px;}
+    input[type="text"]{width:220px;}
+    .count-badge{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;}
+    table{width:100%;border-collapse:collapse;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+    th{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;padding:9px 12px;text-align:right;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+    th:hover{color:var(--accent);}
+    th.sorted{color:var(--accent);}
+    th:first-child,th:nth-child(2){text-align:left;}
+    td{padding:8px 12px;border-bottom:1px solid rgba(125,146,168,0.15);text-align:right;}
+    td:first-child{font-weight:700;color:var(--accent);text-align:left;font-family:var(--mono);}
+    td:nth-child(2){text-align:left;}
+    .overdue{color:var(--red);font-weight:700;}
+    .heatcell{text-align:center;font-family:var(--mono);font-size:11px;color:#fff;}
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;}
+    .disclaimer{font-size:10px;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:10px;margin-top:14px;}
+    .loading-line{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:50px;}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-mark">K</div><div><span class="logo-text">GENITUS</span><span class="logo-sub">DIVIDENDEN-KALENDER</span></div></div>
+  <div style="display:flex;align-items:center;gap:10px"><span class="cache-badge" id="cacheBadge">● lädt...</span><button id="themeToggleBtn" title="Toggle theme">🌙</button></div>
+</header>
+<div class="main">
+  <div class="tabbar">
+    <button class="tabbtn active" data-tab="next" onclick="switchTab('next')">Nächste Zahltermine</button>
+    <button class="tabbtn" data-tab="season" onclick="switchTab('season')">Saisonalität nach Börse</button>
+  </div>
+
+  <div class="tabpanel active" id="tab-next">
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Symbol oder Name suchen..." oninput="renderNextTable()">
+      <select id="exchangeSelect" onchange="renderNextTable()"><option value="ALL">Alle Börsen</option></select>
+      <span class="count-badge" id="countBadge"></span>
+    </div>
+    <table><thead><tr id="headRow"></tr></thead><tbody id="bodyRows"><tr><td colspan="6" class="loading-line">Lade Daten...</td></tr></tbody></table>
+  </div>
+
+  <div class="tabpanel" id="tab-season">
+    <div class="panel">
+      <h2 style="font-family:var(--mono);font-size:13px;margin-bottom:12px">Anteil der Jahres-Zahlungen pro Monat (%)</h2>
+      <select id="seasonExchangeSelect" onchange="renderSeasonTable()" style="margin-bottom:12px;width:220px"></select>
+      <table id="seasonTable"></table>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    "Nächster Zahltermin" = letztes Zahlungsdatum + Median-Intervall der letzten 8 Zahlungen — eine statistische Projektion, keine bestätigte Ankündigung. Liegt das projizierte Datum bereits in der Vergangenheit, gilt die Zahlung als "überfällig" (rot) — das kann auf verzögerte Ankündigung ODER auf eine tatsächliche Aussetzung hindeuten, bitte nicht automatisch als "kommt bald" interpretieren. Nur Symbole mit ≥4 historischen Zahlungen und einer Zahlung innerhalb der letzten ~400 Tage werden gelistet. Saisonalität nur für Börsen mit ≥500 historischen Zahlungen (sonst statistisch nicht belastbar). Reine Cache-Auswertung, keine Live-Abfrage, keine Garantie, keine Anlageberatung.
+  </div>
+</div>
+<script>
+  const DATA_URL = 'https://raw.githubusercontent.com/Babybounce500/genitus-ticker-cache/main/dividend-calendar-data.json';
+  const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  (function(){
+    const KEY='genitusTheme:calendar';
+    function applyTheme(t){ document.documentElement.classList.toggle('dark-theme', t==='dark'); localStorage.setItem(KEY,t); const btn=document.getElementById('themeToggleBtn'); if(btn) btn.textContent = t==='dark' ? '☀' : '🌙'; }
+    let saved = localStorage.getItem(KEY) || 'light';
+    applyTheme(saved);
+    document.getElementById('themeToggleBtn').addEventListener('click', function(){ applyTheme(document.documentElement.classList.contains('dark-theme')?'light':'dark'); });
+  })();
+
+  window.switchTab = function(tab){
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+tab));
+  };
+
+  let data = null;
+  let sortKey='nextExpectedDate', sortDir='asc';
+  const COLUMNS = [ {key:'symbol',label:'Symbol'},{key:'name',label:'Name'},{key:'exchange',label:'Börse'},{key:'nextExpectedDate',label:'Nächster Termin'},{key:'medianIntervalDays',label:'Intervall (Tage)'},{key:'paymentCount',label:'# Zahlungen'} ];
+
+  function buildHead(){
+    document.getElementById('headRow').innerHTML = COLUMNS.map(c=>`<th class="${sortKey===c.key?'sorted':''}" onclick="sortBy('${c.key}')">${c.label}${sortKey===c.key?(sortDir==='asc'?' ▲':' ▼'):''}</th>`).join('');
+  }
+  window.sortBy = function(key){ if(sortKey===key) sortDir=sortDir==='asc'?'desc':'asc'; else { sortKey=key; sortDir='asc'; } buildHead(); renderNextTable(); };
+
+  window.renderNextTable = function(){
+    const q = document.getElementById('searchInput').value.toLowerCase().trim();
+    const ex = document.getElementById('exchangeSelect').value;
+    let rows = data.calendarRows.filter(r=>(ex==='ALL'||r.exchange===ex) && (!q || r.symbol.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)));
+    rows.sort((a,b)=>{
+      const av=a[sortKey], bv=b[sortKey];
+      if(typeof av==='string') return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);
+      return sortDir==='asc'?av-bv:bv-av;
+    });
+    document.getElementById('countBadge').textContent = `${rows.length} Treffer`;
+    const today = data.generatedDate;
+    document.getElementById('bodyRows').innerHTML = rows.slice(0,500).map(r=>{
+      const overdue = r.nextExpectedDate < today;
+      return `<tr><td>${r.symbol}</td><td>${r.name}</td><td>${r.exchange}</td>
+        <td class="${overdue?'overdue':''}">${r.nextExpectedDate}${overdue?' (überfällig)':''}</td>
+        <td>${r.medianIntervalDays}</td><td>${r.paymentCount}</td></tr>`;
+    }).join('') + (rows.length>500?`<tr><td colspan="6" style="text-align:center;color:var(--muted)">... ${rows.length-500} weitere, bitte Suche verfeinern</td></tr>`:'');
+  };
+
+  function heatColor(pct){
+    // 0% -> neutral grey, scales up to a strong accent at high concentration
+    const t = Math.min(pct/25, 1); // 25%+ in one month = fully saturated
+    const r = Math.round(14 + t*(0-14)), g = Math.round(116 - t*40), b = Math.round(144 - t*20);
+    return `rgb(${Math.round(14+t*200)},${Math.round(116-t*80)},${Math.round(144-t*60)})`;
+  }
+
+  window.renderSeasonTable = function(){
+    const ex = document.getElementById('seasonExchangeSelect').value;
+    const s = data.seasonality[ex];
+    if(!s) return;
+    let html = '<tr><th>Börse</th>' + MONTH_NAMES.map(m=>`<th>${m}</th>`).join('') + '</tr>';
+    html += `<tr><td>${ex} (n=${s.total})</td>` + s.monthPct.map(p=>`<td class="heatcell" style="background:${heatColor(p)}">${p.toFixed(1)}%</td>`).join('') + '</tr>';
+    document.getElementById('seasonTable').innerHTML = html;
+  };
+
+  async function loadData(){
+    try{
+      const res = await fetch(DATA_URL);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      data = await res.json();
+      document.getElementById('cacheBadge').textContent = `● ${data.calendarRows.length} Termine, ${Object.keys(data.seasonality).length} Börsen`;
+      const exchanges = [...new Set(data.calendarRows.map(r=>r.exchange))].sort();
+      const sel = document.getElementById('exchangeSelect');
+      exchanges.forEach(ex=>{ const o=document.createElement('option'); o.value=ex; o.textContent=ex; sel.appendChild(o); });
+      const seasonSel = document.getElementById('seasonExchangeSelect');
+      Object.keys(data.seasonality).sort((a,b)=>data.seasonality[b].total-data.seasonality[a].total).forEach(ex=>{
+        const o=document.createElement('option'); o.value=ex; o.textContent=`${ex} (n=${data.seasonality[ex].total})`; seasonSel.appendChild(o);
+      });
+      buildHead();
+      renderNextTable();
+      renderSeasonTable();
+    }catch(e){
+      document.getElementById('cacheBadge').textContent = '● Fehler';
+      document.getElementById('bodyRows').innerHTML = `<tr><td colspan="6" class="loading-line">Fehler: ${e.message}</td></tr>`;
+    }
+  }
+  loadData();
+</script>
+</body>
+</html>
